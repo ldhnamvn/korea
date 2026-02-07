@@ -2,46 +2,55 @@
 import { Product } from '../types';
 
 const SHEET_ID = '1uqOCrUxoeSXAHODRjwCSY0PRc1cjB_r6nk-R5PyE4pQ';
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&t=${new Date().getTime()}`;
 
 export const fetchProductsFromSheet = async (): Promise<Product[]> => {
+  // Thêm timestamp để Google Sheets không trả về dữ liệu cũ đã lưu trong cache của server
+  const timestamp = new Date().getTime();
+  const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0&t=${timestamp}`;
+
   try {
     const response = await fetch(CSV_URL, {
-      cache: 'no-store' // Đảm bảo luôn lấy dữ liệu mới nhất
+      method: 'GET',
+      headers: {
+        'content-type': 'text/csv;charset=UTF-8'
+      },
+      cache: 'no-cache'
     });
     
-    if (!response.ok) throw new Error('Không thể kết nối tới Google Sheets');
+    if (!response.ok) throw new Error('Kết nối Google Sheets thất bại');
     
     const csvText = await response.text();
-    const rows = csvText.split(/\r?\n/).filter(row => row.trim() !== '');
+    // Tách dòng và loại bỏ các dòng trống
+    const rows = csvText.split(/\r?\n/).filter(row => row.trim().length > 0);
     
-    // Bỏ qua dòng header
-    const dataRows = rows.slice(1);
+    if (rows.length <= 1) return []; // Chỉ có header hoặc trống
+
+    const dataRows = rows.slice(1); // Bỏ dòng tiêu đề
     
     return dataRows.map((row, index) => {
-      // Regex thông minh để split CSV (xử lý dấu phẩy trong ngoặc kép)
-      const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
-      const cleanCols = cols.map(c => c.replace(/^"|"$/g, '').trim());
+      // Xử lý CSV chuẩn: tách bằng dấu phẩy nhưng giữ nội dung trong ngoặc kép
+      const matches = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+      const cleanCols = matches ? matches.map(c => c.replace(/^"|"$/g, '').trim()) : [];
 
       return {
-        id: `sheet-${index}-${Date.now()}`,
-        name: cleanCols[0] || 'Sản phẩm chưa đặt tên',
+        id: `sheet-${index}-${timestamp}`,
+        name: cleanCols[0] || 'Sản phẩm Shopee',
         price: parseInt(cleanCols[1]?.replace(/\D/g, '')) || 0,
         category: cleanCols[2] || 'Khác',
         imageUrl: cleanCols[3] || 'https://via.placeholder.com/400?text=No+Image',
-        description: cleanCols[4] || 'Mô tả đang được cập nhật từ Google Sheets...',
+        description: cleanCols[4] || 'Sản phẩm chất lượng cao, giá tốt nhất thị trường.',
         sellerZalo: cleanCols[5] || '',
         sellerFB: cleanCols[6] || '',
-        sellerName: cleanCols[7] || 'Đối tác Chợ Việt',
-        sellerId: 'system-sheet',
-        createdAt: Date.now(),
-        rating: 4.8,
-        soldCount: Math.floor(Math.random() * 1000) + 50,
-        location: cleanCols[8] || 'Toàn quốc'
+        sellerName: cleanCols[7] || 'Cửa hàng chính hãng',
+        sellerId: 'system-sync',
+        createdAt: timestamp,
+        rating: 4.5 + (Math.random() * 0.5),
+        soldCount: Math.floor(Math.random() * 1200) + 100,
+        location: cleanCols[8] || 'Hà Nội'
       };
-    }).filter(p => p.name !== 'Sản phẩm chưa đặt tên' && p.price > 0);
+    }).filter(p => p.price > 0);
   } catch (error) {
-    console.error("Lỗi Google Sheet Service:", error);
+    console.error("Lỗi đồng bộ Google Sheets:", error);
     return [];
   }
 };
