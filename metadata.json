@@ -1,0 +1,7 @@
+{
+  "name": "Chợ Việt Online - Sàn Thương Mại Điện Tử Đơn Giản",
+  "description": "Nền tảng mua bán hàng trực tuyến dành cho người Việt với giao diện tinh tế, hỗ trợ đăng tin bằng Gmail, thanh toán COD và tích hợp liên hệ qua Zalo/Facebook.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
